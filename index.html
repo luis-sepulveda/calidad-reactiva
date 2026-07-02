@@ -1,0 +1,519 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Reincidencia Reactiva · %CR NFTT por Técnico</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+:root{
+  --bg:#0d1322; --bg2:#121a2e; --panel:#16203a; --panel2:#1b2746;
+  --line:#243152; --txt:#e7eefb; --muted:#8b9bc4;
+  --good:#2dd4a7; --mid:#f5b743; --bad:#ff5d6c; --bad2:#ff7a86;
+  --accent:#4cc9f0; --accentdim:#2b6f8f;
+  --shadow:0 10px 30px rgba(0,0,0,.35);
+}
+*{box-sizing:border-box}
+body{margin:0;background:radial-gradient(1200px 600px at 80% -10%,#1a2747 0%,var(--bg) 55%);
+  color:var(--txt);font-family:'Inter',-apple-system,Segoe UI,Roboto,sans-serif;
+  -webkit-font-smoothing:antialiased;padding:24px;min-height:100vh}
+.mono{font-family:'JetBrains Mono',ui-monospace,'SF Mono',Menlo,Consolas,monospace;font-variant-numeric:tabular-nums}
+.wrap{max-width:1320px;margin:0 auto}
+
+/* header */
+header{display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:16px;margin-bottom:22px}
+.title-eyebrow{font-size:11px;letter-spacing:.22em;text-transform:uppercase;color:var(--accent);font-weight:600;margin-bottom:6px}
+h1{margin:0;font-size:26px;font-weight:700;letter-spacing:-.01em}
+h1 span{color:var(--muted);font-weight:500}
+.umbral-badge{display:inline-flex;align-items:center;gap:8px;background:var(--panel);border:1px solid var(--line);
+  border-radius:999px;padding:8px 14px;font-size:13px}
+.umbral-badge b{color:var(--mid)}
+.dot{width:8px;height:8px;border-radius:50%;display:inline-block}
+
+/* filters */
+.filters{display:flex;flex-wrap:wrap;gap:18px;background:linear-gradient(180deg,var(--panel),var(--bg2));
+  border:1px solid var(--line);border-radius:16px;padding:16px 18px;margin-bottom:18px}
+.fgroup{display:flex;flex-direction:column;gap:8px}
+.flabel{font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);font-weight:600}
+.chips{display:flex;flex-wrap:wrap;gap:7px}
+.chip{cursor:pointer;border:1px solid var(--line);background:var(--bg2);color:var(--muted);
+  padding:7px 13px;border-radius:9px;font-size:12.5px;font-weight:500;transition:.15s;user-select:none}
+.chip:hover{border-color:var(--accentdim);color:var(--txt)}
+.chip.on{background:var(--accent);border-color:var(--accent);color:#06121b;font-weight:600}
+.chip.mon.on{background:var(--mid);border-color:var(--mid)}
+.spacer{flex:1}
+
+/* kpis */
+.kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:18px}
+.kpi{background:linear-gradient(180deg,var(--panel),var(--bg2));border:1px solid var(--line);
+  border-radius:16px;padding:16px 18px;position:relative;overflow:hidden}
+.kpi::before{content:'';position:absolute;left:0;top:0;bottom:0;width:3px;background:var(--accent)}
+.kpi.warn::before{background:var(--bad)}
+.kpi.ok::before{background:var(--good)}
+.kpi-label{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.12em;font-weight:600}
+.kpi-val{font-size:30px;font-weight:700;margin-top:8px;line-height:1}
+.kpi-sub{font-size:12px;color:var(--muted);margin-top:7px}
+.kpi-sub b{color:var(--txt);font-weight:600}
+
+/* panels */
+.grid2{display:grid;grid-template-columns:1.05fr .95fr;gap:16px;margin-bottom:18px}
+.panel{background:linear-gradient(180deg,var(--panel),var(--bg2));border:1px solid var(--line);
+  border-radius:16px;padding:18px;box-shadow:var(--shadow)}
+.panel h2{margin:0 0 2px;font-size:15px;font-weight:650}
+.panel .sub{font-size:12px;color:var(--muted);margin-bottom:14px}
+.chartbox{position:relative;height:340px}
+.chartbox.short{height:300px}
+
+/* heatmap */
+.hm-head{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:12px}
+.legend{display:flex;align-items:center;gap:14px;font-size:11.5px;color:var(--muted);flex-wrap:wrap}
+.legend .it{display:flex;align-items:center;gap:6px}
+.sw{width:13px;height:13px;border-radius:4px;display:inline-block}
+table{width:100%;border-collapse:separate;border-spacing:0 0;font-size:13px}
+thead th{position:sticky;top:0;background:var(--panel2);color:var(--muted);font-weight:600;
+  font-size:11px;letter-spacing:.04em;text-transform:uppercase;padding:10px 8px;text-align:center;
+  border-bottom:1px solid var(--line);cursor:pointer;white-space:nowrap;user-select:none}
+thead th.l{text-align:left}
+thead th:hover{color:var(--txt)}
+thead th .ar{opacity:.5;font-size:9px;margin-left:3px}
+tbody td{padding:0;border-bottom:1px solid rgba(36,49,82,.55)}
+.tac-cell{padding:9px 10px;text-align:left;white-space:nowrap}
+.tac-name{font-weight:600;font-size:13px}
+.tac-meta{font-size:10.5px;color:var(--muted);margin-top:1px}
+.cell{height:36px;display:flex;align-items:center;justify-content:center;font-weight:600;font-size:12.5px;
+  border-radius:7px;margin:3px}
+.tac-cell .reg{display:inline-block;font-size:9px;font-weight:700;padding:1px 6px;border-radius:5px;
+  margin-right:6px;letter-spacing:.05em;vertical-align:middle}
+.reg.RM{background:rgba(76,201,240,.16);color:#7fd6f5}
+.reg.VALPO{background:rgba(167,139,250,.16);color:#bba6fb}
+.spark{display:flex;align-items:flex-end;gap:2px;height:26px;padding:0 6px}
+.spark i{width:7px;border-radius:2px 2px 0 0;display:block}
+.trend{font-weight:700;font-size:13px;text-align:center}
+.trend.up{color:var(--bad)} .trend.down{color:var(--good)} .trend.flat{color:var(--muted)}
+.scroll{max-height:560px;overflow:auto;border-radius:10px;border:1px solid var(--line)}
+.scroll::-webkit-scrollbar{width:10px;height:10px}
+.scroll::-webkit-scrollbar-thumb{background:#2a3a60;border-radius:6px}
+.empty{padding:40px;text-align:center;color:var(--muted)}
+.foot{margin-top:18px;font-size:11.5px;color:var(--muted);text-align:center;line-height:1.7}
+.foot code{background:var(--panel);padding:2px 6px;border-radius:5px;color:var(--accent)}
+@media(max-width:980px){.grid2{grid-template-columns:1fr}.kpis{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:560px){.kpis{grid-template-columns:1fr}body{padding:14px}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div>
+      <div class="title-eyebrow">VTR / CLARO · Dominion · Calidad</div>
+      <h1>Reincidencia Reactiva <span>· %CR NFTT por técnico</span></h1>
+    </div>
+    <div class="umbral-badge"><span class="dot" style="background:var(--mid)"></span>Meta: máximo <b>&nbsp;5,5%</b></div>
+  </header>
+
+  <div class="filters">
+    <div class="fgroup">
+      <span class="flabel">Región</span>
+      <div class="chips" id="f-region"></div>
+    </div>
+    <div class="fgroup">
+      <span class="flabel">Supervisor</span>
+      <div class="chips" id="f-sup"></div>
+    </div>
+    <div class="spacer"></div>
+    <div class="fgroup">
+      <span class="flabel">Mes foco (ranking + KPIs)</span>
+      <div class="chips" id="f-mes"></div>
+    </div>
+  </div>
+
+  <div class="kpis" id="kpis"></div>
+
+  <div class="grid2">
+    <div class="panel">
+      <h2>Peores del mes</h2>
+      <div class="sub" id="rank-sub">Top reincidencia · ordenado de mayor a menor</div>
+      <div class="chartbox"><canvas id="rankChart"></canvas></div>
+    </div>
+    <div class="panel">
+      <h2>Tendencia del grupo</h2>
+      <div class="sub" id="trend-sub">Promedio de reincidencia mes a mes vs. umbral</div>
+      <div class="chartbox short"><canvas id="trendChart"></canvas></div>
+    </div>
+  </div>
+
+  <div class="panel">
+    <div class="hm-head">
+      <div>
+        <h2>Mapa de calor · histórico por técnico</h2>
+        <div class="sub" id="hm-sub">Click en un encabezado de mes para ordenar. Rojo = sobre umbral.</div>
+      </div>
+      <div class="legend">
+        <span class="it"><span class="sw" style="background:#2dd4a7"></span>0%</span>
+        <span class="it"><span class="sw" style="background:#f5b743"></span>5,5% (umbral)</span>
+        <span class="it"><span class="sw" style="background:#ff5d6c"></span>11%+</span>
+        <span class="it"><span class="trend up">▲</span> empeora&nbsp;&nbsp;<span class="trend down">▼</span> mejora</span>
+      </div>
+    </div>
+    <div class="scroll">
+      <table id="hm">
+        <thead><tr id="hm-head-row"></tr></thead>
+        <tbody id="hm-body"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="panel" style="margin-top:18px">
+    <div class="hm-head">
+      <div>
+        <h2>Responsabilidad de reincidencias</h2>
+        <div class="sub">Casos del formulario de calidad reactiva · Febrero a 30 de Junio · responde a los mismos filtros de región y supervisor</div>
+      </div>
+      <div class="legend" id="resp-legend"></div>
+    </div>
+    <div class="grid2" style="margin-bottom:14px">
+      <div>
+        <div class="sub" style="margin-bottom:8px">Casos por mes según responsabilidad</div>
+        <div class="chartbox short"><canvas id="respStack"></canvas></div>
+      </div>
+      <div>
+        <div class="sub" id="resp-donut-sub" style="margin-bottom:8px">Distribución · mes foco</div>
+        <div class="chartbox short"><canvas id="respDonut"></canvas></div>
+      </div>
+    </div>
+    <div class="sub" id="resp-table-sub"></div>
+    <div class="scroll" style="max-height:480px">
+      <table><thead><tr id="respt-head"></tr></thead><tbody id="respt-body"></tbody></table>
+    </div>
+  </div>
+
+  <div class="foot">
+    %CR: 83 técnicos · Marzo a Junio. Responsabilidad: 98 técnicos · 1.607 casos · Febrero a 30 de Junio (formulario calidad reactiva).<br>
+    Datos embebidos en <code>DB</code> (%CR) y <code>DB2</code> (responsabilidad). Generado para el pipeline de Luis.
+  </div>
+</div>
+
+<script>
+const HAS_CHART = (typeof Chart !== 'undefined');
+const DB = {"umbral": 5.5, "meses": ["Marzo", "Abril", "Mayo", "Junio (en curso)"], "data": [{"rut": "16677669-4", "tac": "Marcelo Antonio Gomez Gomez", "region": "VALPO", "sup": "Terry Riverol", "m": [10.67, 3.33, 20.31, 4.92]}, {"rut": "23656685-4", "tac": "Javier Enrique Terrones Ramos", "region": "RM", "sup": "Alfredo Cumebertbach", "m": [2.41, 8.97, 16.05, 2.86]}, {"rut": "16815562-K", "tac": "Sebastian Eduardo Dossow Acuña", "region": "VALPO", "sup": "Victor Moreira", "m": [2.47, 7.23, 13.25, 3.12]}, {"rut": "25230454-1", "tac": "Juan David Mayor Rosero", "region": "RM", "sup": "Ruben Murillo", "m": [4.3, 4.94, 11.11, 1.28]}, {"rut": "16300862-9", "tac": "Pablo Marcelino Hernandez Fernandez", "region": "VALPO", "sup": "Victor Moreira", "m": [0.0, 3.95, 10.98, 6.9]}, {"rut": "19235955-4", "tac": "Javier Andres Pizarro Stuardo", "region": "RM", "sup": "Alfredo Cumebertbach", "m": [4.76, 7.69, 9.62, 1.43]}, {"rut": "26445988-5", "tac": "Jean Roodly Orelien", "region": "VALPO", "sup": "Terry Riverol", "m": [6.06, 6.9, 9.52, 1.52]}, {"rut": "27508534-0", "tac": "Erwin Juan Quenallata Chejo", "region": "RM", "sup": "Alfredo Cumebertbach", "m": [2.22, 9.72, 9.47, 6.98]}, {"rut": "25082931-0", "tac": "Melvi Alejandro Lavayen Velasco", "region": "RM", "sup": "Ruben Murillo", "m": [8.6, 9.23, 9.09, 4.0]}, {"rut": "20627195-7", "tac": "Andrew Nicolas Roman Parada", "region": "RM", "sup": "Ruben Murillo", "m": [14.89, 5.48, 8.97, 4.55]}, {"rut": "16637519-3", "tac": "Matias Enrique Apeleo Apeleo", "region": "VALPO", "sup": "Terry Riverol", "m": [8.33, 2.5, 8.54, 2.44]}, {"rut": "27983584-0", "tac": "Marco Jesus Perez Garcia", "region": "VALPO", "sup": "Terry Riverol", "m": [3.26, 4.41, 8.33, 2.94]}, {"rut": "17121947-7", "tac": "Jonathan Andres Encina Altamirano", "region": "RM", "sup": "Alfredo Cumebertbach", "m": [2.7, 2.99, 8.33, 0.0]}, {"rut": "18980771-6", "tac": "Juan Pablo Arriagada Cofre", "region": "VALPO", "sup": "Victor Moreira", "m": [3.77, 3.88, 8.05, 5.48]}, {"rut": "26897630-2", "tac": "Refferson Demosthene", "region": "RM", "sup": "Ruben Murillo", "m": [0.0, 9.52, 8.0, 3.28]}, {"rut": "26212990-K", "tac": "Luis Alejandro Castro Torres", "region": "VALPO", "sup": "Victor Moreira", "m": [8.33, 7.35, 7.95, 5.8]}, {"rut": "19564625-2", "tac": "Jean Carlos Vidal Candia", "region": "RM", "sup": "Alfredo Cumebertbach", "m": [5.88, 7.46, 7.69, 11.36]}, {"rut": "25767883-0", "tac": "Rafael Antonio Gruber Brito", "region": "RM", "sup": "Ruben Murillo", "m": [5.13, 8.11, 7.69, 1.39]}, {"rut": "27125705-8", "tac": "Jaiber Jesus Escobar Leon", "region": "RM", "sup": "Ruben Murillo", "m": [1.43, 5.56, 7.53, 3.12]}, {"rut": "26055982-6", "tac": "Yender Jose Boscan Cadenas", "region": "VALPO", "sup": "Terry Riverol", "m": [5.0, 6.76, 7.41, 0.0]}, {"rut": "17606215-0", "tac": "Eugenio Elizardo Jara Neira", "region": "RM", "sup": "Alfredo Cumebertbach", "m": [6.25, 0.0, 7.32, 0.0]}, {"rut": "19031572-K", "tac": "Jhonny Mauricio Wood Soto", "region": "RM", "sup": "Ruben Murillo", "m": [2.53, 1.39, 7.32, 0.0]}, {"rut": "16618182-8", "tac": "Luis Omar Sepulveda Pino", "region": "RM", "sup": "Alfredo Cumebertbach", "m": [5.71, 3.85, 7.25, 3.33]}, {"rut": "25707893-0", "tac": "Richard Daniel Romero Ravenstein", "region": "RM", "sup": "Ruben Murillo", "m": [3.3, 1.28, 6.82, 1.28]}, {"rut": "21187551-8", "tac": "Vicente Ariel Herrera Ramos", "region": "RM", "sup": "Ruben Murillo", "m": [5.26, 0.0, 6.76, 6.67]}, {"rut": "13441742-0", "tac": "Julio Manuel Ossa Puebla", "region": "RM", "sup": "Alfredo Cumebertbach", "m": [7.14, 6.58, 6.67, 5.0]}, {"rut": "21054546-8", "tac": "Cristobal Adonis Celedon Soto", "region": "RM", "sup": "Alfredo Cumebertbach", "m": [10.77, 1.39, 6.67, 3.7]}, {"rut": "26284326-2", "tac": "Rafael Antonio Vargas Brizuela", "region": "VALPO", "sup": "Terry Riverol", "m": [4.0, 6.58, 6.67, 1.69]}, {"rut": "27399299-5", "tac": "Jose Samael Perez Rangel", "region": "VALPO", "sup": "Terry Riverol", "m": [1.69, 7.37, 6.67, 0.0]}, {"rut": "28267011-9", "tac": "Alexis Xavier Jaramillo Ortiz", "region": "VALPO", "sup": "Terry Riverol", "m": [1.14, 4.21, 6.41, 2.53]}, {"rut": "18033296-0", "tac": "Frederic Alejandro Ovalle Vergara", "region": "VALPO", "sup": "Terry Riverol", "m": [3.8, 4.62, 6.25, 5.17]}, {"rut": "19650217-3", "tac": "Mauricio Valentin Bustamante Gutierrez", "region": "RM", "sup": "Alfredo Cumebertbach", "m": [8.96, 7.46, 6.1, 6.67]}, {"rut": "20014255-1", "tac": "Nicolas Antonio Moyano Ramos", "region": "VALPO", "sup": "Victor Moreira", "m": [5.81, 8.14, 6.1, 1.52]}, {"rut": "19794505-2", "tac": "Rodrigo Armando Miranda Tobar", "region": "RM", "sup": "Alfredo Cumebertbach", "m": [8.7, 1.92, 6.1, 1.82]}, {"rut": "18043583-2", "tac": "Felipe Osvaldo Silva Rojas", "region": "VALPO", "sup": "Victor Moreira", "m": [8.82, 1.85, 5.88, 0.0]}, {"rut": "26863189-5", "tac": "Geeyser Alexander Perez Ochoa", "region": "VALPO", "sup": "Victor Moreira", "m": [3.61, 7.32, 5.56, 3.08]}, {"rut": "18906694-5", "tac": "Francisco Javier Salazar Cabrera", "region": "RM", "sup": "Alfredo Cumebertbach", "m": [9.46, 2.7, 5.56, 1.54]}, {"rut": "26886108-4", "tac": "Juan Carlos Ramos Marcano", "region": "RM", "sup": "Alfredo Cumebertbach", "m": [4.08, 2.27, 5.56, 0.0]}, {"rut": "13432090-7", "tac": "Jose Alberto Castro Palacios", "region": "VALPO", "sup": "Victor Moreira", "m": [7.32, 12.82, 5.33, 1.35]}, {"rut": "19930057-1", "tac": "Giovanni Andreas Grez Barsby", "region": "RM", "sup": "Ruben Murillo", "m": [5.41, 4.0, 5.13, 3.12]}, {"rut": "17337277-9", "tac": "Cristopher Daniel Contreras Muñoz", "region": "RM", "sup": "Ruben Murillo", "m": [1.52, 4.0, 5.05, 1.1]}, {"rut": "26356183-K", "tac": "Joel Gustave", "region": "VALPO", "sup": "Victor Moreira", "m": [9.64, 9.46, 4.94, 3.03]}, {"rut": "27432337-K", "tac": "Leonel Benito Hernandez Ojeda", "region": "VALPO", "sup": "Terry Riverol", "m": [2.5, 9.88, 4.94, 1.79]}, {"rut": "26776017-9", "tac": "Edgar Leandro Valero Cordova", "region": "VALPO", "sup": "Victor Moreira", "m": [2.25, 4.76, 4.76, 2.67]}, {"rut": "17808957-9", "tac": "Erick Cristian Sepulveda Castro", "region": "VALPO", "sup": "Victor Moreira", "m": [0.98, 0.97, 4.72, 0.0]}, {"rut": "24839716-0", "tac": "Angel Enrique More Olortegui", "region": "RM", "sup": "Alfredo Cumebertbach", "m": [7.69, 3.37, 4.71, 3.17]}, {"rut": "19678590-6", "tac": "Cristobal Alejandro Miranda Valencia", "region": "VALPO", "sup": "Victor Moreira", "m": [6.02, 6.41, 4.71, 1.39]}, {"rut": "17425260-2", "tac": "Alfredo Eduardo Alcayaga Figueroa", "region": "VALPO", "sup": "Victor Moreira", "m": [10.0, 6.9, 4.55, 2.6]}, {"rut": "17143566-8", "tac": "Jose Alexis Galaz Diaz", "region": "VALPO", "sup": "Victor Moreira", "m": [9.01, 4.17, 4.26, 4.41]}, {"rut": "19095390-4", "tac": "Mauricio Alexis Soto Saravia", "region": "RM", "sup": "Alfredo Cumebertbach", "m": [12.16, 6.25, 3.8, 7.27]}, {"rut": "20569080-8", "tac": "Kevin Alejandro Tapia Retamal", "region": "VALPO", "sup": "Victor Moreira", "m": [4.82, 5.56, 3.7, 4.69]}, {"rut": "15753765-2", "tac": "Daniel Hernan Navarrete Escobar", "region": "VALPO", "sup": "Terry Riverol", "m": [7.78, 8.33, 3.61, 5.71]}, {"rut": "27308293-K", "tac": "Birnes Gabriel Hernandez Rodriguez", "region": "RM", "sup": "Ruben Murillo", "m": [4.82, 2.6, 3.45, 4.29]}, {"rut": "26797670-8", "tac": "Anthony Willian Morales Mendoza", "region": "VALPO", "sup": "Terry Riverol", "m": [4.94, 5.88, 3.41, 6.67]}, {"rut": "21238017-2", "tac": "Giovanni Andres Ancamil Riquelme", "region": "RM", "sup": "Ruben Murillo", "m": [7.35, 3.28, 2.78, 4.69]}, {"rut": "16972034-7", "tac": "Samuel Alejandro Fernandez Vidal", "region": "VALPO", "sup": "Victor Moreira", "m": [7.5, 11.54, 1.35, 4.69]}, {"rut": "17160822-8", "tac": "Hernan Alejandro Cortes Herrera", "region": "VALPO", "sup": "Terry Riverol", "m": [9.57, 8.33, 4.44, 2.38]}, {"rut": "26708524-2", "tac": "Alberto Jose Realza Gonzalez", "region": "RM", "sup": "Alfredo Cumebertbach", "m": [5.68, 5.13, 4.21, 0.0]}, {"rut": "27090384-3", "tac": "Fernando Alfonzo Acosta", "region": "RM", "sup": "Alfredo Cumebertbach", "m": [9.38, 7.35, 3.8, 0.0]}, {"rut": "19784815-4", "tac": "Matias Daniel Feliu Olivares", "region": "RM", "sup": "Alfredo Cumebertbach", "m": [13.79, 4.29, 3.75, 0.0]}, {"rut": "18784735-4", "tac": "Rodrigo Ignacio Gonzalez Achiardi", "region": "RM", "sup": "Ruben Murillo", "m": [6.76, 4.17, 3.66, 2.22]}, {"rut": "20034210-0", "tac": "Nicolas Andres Escalona Reyes", "region": "RM", "sup": "Alfredo Cumebertbach", "m": [5.38, 1.37, 3.61, 0.0]}, {"rut": "18841406-0", "tac": "Esteban Ignacio Pizarro Quintana", "region": "VALPO", "sup": "Terry Riverol", "m": [9.09, 5.32, 3.57, 2.33]}, {"rut": "19517016-9", "tac": "Carlos Javier Miranda Jeldres", "region": "RM", "sup": "Alfredo Cumebertbach", "m": [2.47, 6.17, 3.53, 2.33]}, {"rut": "19344471-7", "tac": "Matias Aaron Jaque Aguilera", "region": "VALPO", "sup": "Terry Riverol", "m": [6.17, 3.23, 3.45, 0.0]}, {"rut": "26740969-2", "tac": "Hossbel Eduardo Acosta Pacheco", "region": "RM", "sup": "Ruben Murillo", "m": [6.85, 2.78, 3.39, 4.55]}, {"rut": "26587015-5", "tac": "Cesar David Mena Oliveros", "region": "VALPO", "sup": "Terry Riverol", "m": [4.35, 2.25, 3.23, 3.33]}, {"rut": "18049436-7", "tac": "Diego Alfredo Valenzuela Zapata", "region": "RM", "sup": "Ruben Murillo", "m": [8.33, 5.0, 3.23, 2.08]}, {"rut": "22121524-9", "tac": "Joxacson Alexander Aguilar Garcia", "region": "RM", "sup": "Ruben Murillo", "m": [4.81, 3.51, 3.23, 2.04]}, {"rut": "19092803-9", "tac": "Jordan Alexander Roa Perez", "region": "VALPO", "sup": "Victor Moreira", "m": [7.22, 6.8, 3.16, 0.0]}, {"rut": "13990447-8", "tac": "Jorge Eduardo Pezoa Vicuña", "region": "VALPO", "sup": "Victor Moreira", "m": [10.26, 8.86, 2.94, 0.0]}, {"rut": "26656441-4", "tac": "Jose Alberto Rojo Arias", "region": "VALPO", "sup": "Terry Riverol", "m": [7.41, 6.12, 2.13, 1.89]}, {"rut": "26292588-9", "tac": "Deivi Gustavo Bello Bogado", "region": "RM", "sup": "Alfredo Cumebertbach", "m": [2.78, 3.09, 1.85, 11.32]}, {"rut": "19483547-7", "tac": "Bastian Andre Burdiles Morales", "region": "RM", "sup": "Alfredo Cumebertbach", "m": [0.0, 1.35, 1.32, 3.85]}, {"rut": "26496150-5", "tac": "Luis Gustavo Martinez Nuñez", "region": "VALPO", "sup": "Victor Moreira", "m": [2.9, 6.56, 1.27, 2.56]}, {"rut": "21070849-9", "tac": "Nicolas Francisco Fuentes Navarrete", "region": "RM", "sup": "Ruben Murillo", "m": [2.78, 5.0, 1.18, 0.0]}, {"rut": "25848248-4", "tac": "Jose Gabriel Arevalo Gamez", "region": "RM", "sup": "Ruben Murillo", "m": [6.25, 0.0, 0.0, 6.45]}, {"rut": "20055264-4", "tac": "Bastian Nicolas Diaz Ruz", "region": "RM", "sup": "Ruben Murillo", "m": [1.25, 0.0, 0.0, 2.17]}, {"rut": "27866763-4", "tac": "Ivan Jose Guerra", "region": "RM", "sup": "Ruben Murillo", "m": [3.66, 0.0, 0.0, 0.0]}, {"rut": "19619558-0", "tac": "Cristobal Silva Leiva", "region": "VALPO", "sup": "Terry Riverol", "m": [2.08, 30.0, 0.0, 0.0]}, {"rut": "15777178-7", "tac": "Luis Alejandro Gatica Davila", "region": "VALPO", "sup": "Victor Moreira", "m": [2.17, 9.33, 0.0, 0.0]}, {"rut": "27827572-8", "tac": "Jose Alvaro Salas Medina", "region": "VALPO", "sup": "Terry Riverol", "m": [8.77, 5.0, 0.0, 0.0]}, {"rut": "15883974-1", "tac": "Alexis Patricio Santana Miranda", "region": "VALPO", "sup": "Victor Moreira", "m": [2.13, 0.0, 0.0, 0.0]}]};
+const DB2 = {"meses": ["Febrero", "Marzo", "Abril", "Mayo", "Junio"], "cats": ["Técnico", "Plataforma VTR", "Cliente", "Desconexión Tercero"], "data": [{"rut": "26587015-5", "tac": "Cesar David Mena Oliveros", "region": "VALPO", "sup": "Terry Riverol", "c": [[3, 0, 3, 0], [1, 6, 6, 1], [2, 2, 1, 1], [2, 4, 0, 0], [6, 5, 4, 1]]}, {"rut": "27508534-0", "tac": "Erwin Juan Quenallata Chejo", "region": "RM", "sup": "Alfredo Cumebertbach", "c": [[0, 2, 1, 0], [0, 0, 0, 2], [4, 1, 3, 1], [3, 4, 2, 1], [5, 5, 1, 2]]}, {"rut": "13441742-0", "tac": "Julio Manuel Ossa Puebla", "region": "RM", "sup": "Alfredo Cumebertbach", "c": [[0, 3, 3, 1], [2, 4, 0, 0], [2, 1, 1, 1], [2, 2, 0, 0], [1, 2, 2, 2]]}, {"rut": "20721438-8", "tac": "Alejandro Vargas Navarre", "region": "RM", "sup": "—", "c": [[2, 0, 1, 3], [0, 1, 1, 0], [1, 2, 1, 1], [1, 2, 1, 0], [7, 1, 1, 1]]}, {"rut": "16677669-4", "tac": "Marcelo Antonio Gomez Gomez", "region": "VALPO", "sup": "Terry Riverol", "c": [[0, 0, 0, 0], [4, 1, 1, 1], [0, 2, 3, 2], [1, 2, 3, 1], [0, 3, 1, 1]]}, {"rut": "17425260-2", "tac": "Alfredo Eduardo Alcayaga Figueroa", "region": "VALPO", "sup": "Victor Moreira", "c": [[0, 1, 2, 0], [3, 1, 3, 1], [0, 4, 6, 0], [1, 1, 0, 0], [1, 1, 1, 0]]}, {"rut": "19095390-4", "tac": "Mauricio Alexis Soto Saravia", "region": "RM", "sup": "Alfredo Cumebertbach", "c": [[0, 3, 1, 0], [3, 2, 2, 3], [0, 2, 0, 0], [0, 2, 1, 0], [0, 2, 4, 1]]}, {"rut": "19650217-3", "tac": "Mauricio Valentin Bustamante Gutierrez", "region": "RM", "sup": "Alfredo Cumebertbach", "c": [[2, 0, 2, 0], [1, 1, 2, 0], [1, 4, 0, 1], [1, 1, 0, 0], [6, 2, 2, 0]]}, {"rut": "26356183-K", "tac": "Joel Gustave", "region": "VALPO", "sup": "Victor Moreira", "c": [[1, 0, 1, 0], [0, 4, 0, 1], [1, 5, 4, 0], [2, 2, 0, 0], [2, 2, 1, 0]]}, {"rut": "15753765-2", "tac": "Daniel Hernan Navarrete Escobar", "region": "VALPO", "sup": "Terry Riverol", "c": [[1, 1, 0, 0], [3, 1, 3, 0], [1, 3, 1, 0], [1, 3, 0, 0], [1, 5, 1, 0]]}, {"rut": "20627195-7", "tac": "Andrew Nicolas Roman Parada", "region": "RM", "sup": "Ruben Murillo", "c": [[1, 0, 2, 0], [0, 0, 2, 1], [3, 3, 1, 1], [2, 0, 1, 0], [3, 4, 0, 1]]}, {"rut": "25082931-0", "tac": "Melvi Alejandro Lavayen Velasco", "region": "RM", "sup": "Ruben Murillo", "c": [[1, 0, 0, 0], [5, 0, 3, 0], [1, 1, 3, 0], [5, 1, 1, 0], [1, 2, 1, 0]]}, {"rut": "17160822-8", "tac": "Hernan Alejandro Cortes Herrera", "region": "VALPO", "sup": "Terry Riverol", "c": [[2, 0, 1, 0], [7, 2, 1, 0], [2, 3, 1, 1], [0, 1, 0, 0], [0, 0, 1, 2]]}, {"rut": "23656685-4", "tac": "Javier Enrique Terrones Ramos", "region": "RM", "sup": "Alfredo Cumebertbach", "c": [[0, 0, 0, 0], [1, 1, 1, 0], [0, 1, 1, 1], [1, 0, 5, 3], [1, 1, 3, 4]]}, {"rut": "13432090-7", "tac": "Jose Alberto Castro Palacios", "region": "VALPO", "sup": "Victor Moreira", "c": [[0, 0, 1, 0], [3, 1, 3, 1], [0, 5, 1, 0], [3, 3, 0, 0], [0, 1, 1, 0]]}, {"rut": "13990447-8", "tac": "Jorge Eduardo Pezoa Vicuña", "region": "VALPO", "sup": "Victor Moreira", "c": [[1, 2, 0, 1], [1, 0, 1, 1], [2, 0, 2, 2], [2, 1, 0, 0], [2, 1, 4, 0]]}, {"rut": "17143566-8", "tac": "Jose Alexis Galaz Diaz", "region": "VALPO", "sup": "Victor Moreira", "c": [[0, 0, 1, 0], [2, 2, 2, 1], [0, 6, 0, 2], [2, 0, 1, 1], [1, 2, 0, 0]]}, {"rut": "18980771-6", "tac": "Juan Pablo Arriagada Cofre", "region": "VALPO", "sup": "Victor Moreira", "c": [[2, 1, 3, 0], [1, 1, 0, 0], [1, 2, 0, 2], [4, 0, 1, 0], [2, 2, 1, 0]]}, {"rut": "25230454-1", "tac": "Juan David Mayor Rosero", "region": "RM", "sup": "Ruben Murillo", "c": [[2, 2, 1, 0], [1, 1, 1, 0], [2, 1, 1, 0], [0, 2, 2, 1], [2, 2, 1, 1]]}, {"rut": "26445988-5", "tac": "Jean Roodly Orelien", "region": "VALPO", "sup": "Terry Riverol", "c": [[1, 0, 2, 0], [0, 2, 3, 1], [0, 4, 1, 0], [2, 0, 0, 0], [2, 5, 0, 0]]}, {"rut": "18049436-7", "tac": "Diego Alfredo Valenzuela Zapata", "region": "RM", "sup": "Ruben Murillo", "c": [[0, 1, 2, 1], [4, 2, 0, 0], [3, 1, 1, 0], [0, 2, 1, 0], [3, 0, 0, 0]]}, {"rut": "18606865-3", "tac": "Camilo Villalon", "region": "RM", "sup": "—", "c": [[0, 0, 0, 2], [0, 1, 1, 3], [1, 3, 0, 1], [2, 1, 0, 1], [2, 2, 1, 0]]}, {"rut": "19329358-1", "tac": "Bayron Ramirez Escobar", "region": "VALPO", "sup": "—", "c": [[0, 1, 2, 0], [3, 2, 1, 0], [2, 2, 0, 1], [1, 1, 1, 1], [3, 0, 0, 0]]}, {"rut": "16815562-K", "tac": "Sebastian Eduardo Dossow Acuña", "region": "VALPO", "sup": "Victor Moreira", "c": [[1, 0, 0, 0], [3, 0, 0, 0], [1, 1, 1, 0], [1, 2, 1, 0], [2, 4, 2, 1]]}, {"rut": "19092803-9", "tac": "Jordan Alexander Roa Perez", "region": "VALPO", "sup": "Victor Moreira", "c": [[1, 0, 0, 0], [3, 0, 1, 0], [0, 2, 4, 1], [1, 4, 0, 0], [0, 1, 1, 1]]}, {"rut": "25767883-0", "tac": "Rafael Antonio Gruber Brito", "region": "RM", "sup": "Ruben Murillo", "c": [[0, 2, 0, 1], [0, 2, 2, 0], [3, 1, 2, 0], [1, 2, 0, 0], [0, 1, 2, 1]]}, {"rut": "26708524-2", "tac": "Alberto Jose Realza Gonzalez", "region": "RM", "sup": "Alfredo Cumebertbach", "c": [[0, 2, 0, 1], [0, 4, 1, 0], [3, 2, 0, 1], [0, 2, 1, 0], [1, 1, 1, 0]]}, {"rut": "27090384-3", "tac": "Fernando Alfonzo Acosta", "region": "RM", "sup": "Alfredo Cumebertbach", "c": [[1, 0, 0, 0], [2, 2, 3, 0], [0, 1, 1, 2], [0, 2, 2, 1], [2, 0, 1, 0]]}, {"rut": "19517016-9", "tac": "Carlos Javier Miranda Jeldres", "region": "RM", "sup": "Alfredo Cumebertbach", "c": [[0, 1, 2, 1], [0, 1, 2, 2], [0, 1, 0, 0], [1, 5, 0, 1], [2, 0, 0, 0]]}, {"rut": "19794505-2", "tac": "Rodrigo Armando Miranda Tobar", "region": "RM", "sup": "Alfredo Cumebertbach", "c": [[0, 4, 1, 0], [0, 3, 1, 1], [0, 0, 1, 1], [1, 2, 1, 0], [1, 2, 0, 0]]}, {"rut": "20014255-1", "tac": "Nicolas Antonio Moyano Ramos", "region": "VALPO", "sup": "Victor Moreira", "c": [[0, 0, 0, 1], [2, 1, 1, 0], [1, 3, 1, 0], [1, 2, 1, 1], [2, 1, 1, 0]]}, {"rut": "26212990-K", "tac": "Luis Alejandro Castro Torres", "region": "VALPO", "sup": "Victor Moreira", "c": [[0, 1, 0, 0], [1, 2, 2, 0], [2, 0, 0, 0], [1, 2, 0, 1], [1, 2, 3, 1]]}, {"rut": "26863189-5", "tac": "Geeyser Alexander Perez Ochoa", "region": "VALPO", "sup": "Victor Moreira", "c": [[0, 0, 1, 0], [2, 1, 0, 1], [1, 3, 2, 1], [2, 0, 1, 0], [3, 1, 0, 0]]}, {"rut": "18033296-0", "tac": "Frederic Alejandro Ovalle Vergara", "region": "VALPO", "sup": "Terry Riverol", "c": [[0, 1, 0, 0], [2, 0, 1, 0], [0, 2, 2, 0], [1, 0, 1, 0], [3, 5, 0, 0]]}, {"rut": "18784735-4", "tac": "Rodrigo Ignacio Gonzalez Achiardi", "region": "RM", "sup": "Ruben Murillo", "c": [[1, 2, 1, 0], [0, 3, 2, 0], [0, 1, 1, 0], [0, 1, 1, 0], [0, 3, 1, 1]]}, {"rut": "19235955-4", "tac": "Javier Andres Pizarro Stuardo", "region": "RM", "sup": "Alfredo Cumebertbach", "c": [[1, 0, 2, 0], [1, 3, 0, 0], [0, 1, 3, 0], [2, 0, 0, 0], [2, 0, 2, 1]]}, {"rut": "19564625-2", "tac": "Jean Carlos Vidal Candia", "region": "RM", "sup": "Alfredo Cumebertbach", "c": [[0, 0, 0, 0], [0, 0, 3, 0], [0, 2, 2, 0], [1, 2, 1, 0], [3, 1, 3, 0]]}, {"rut": "19678590-6", "tac": "Cristobal Alejandro Miranda Valencia", "region": "VALPO", "sup": "Victor Moreira", "c": [[1, 1, 0, 0], [3, 0, 2, 0], [0, 1, 2, 0], [1, 1, 2, 0], [2, 0, 1, 1]]}, {"rut": "19784815-4", "tac": "Matias Daniel Feliu Olivares", "region": "RM", "sup": "Alfredo Cumebertbach", "c": [[0, 1, 0, 0], [2, 0, 2, 0], [2, 4, 0, 0], [1, 2, 2, 1], [0, 1, 0, 0]]}, {"rut": "20569080-8", "tac": "Kevin Alejandro Tapia Retamal", "region": "VALPO", "sup": "Victor Moreira", "c": [[1, 1, 1, 0], [0, 1, 0, 0], [1, 0, 2, 1], [2, 1, 2, 0], [1, 2, 0, 2]]}, {"rut": "21054546-8", "tac": "Cristobal Adonis Celedon Soto", "region": "RM", "sup": "Alfredo Cumebertbach", "c": [[0, 0, 0, 0], [4, 0, 1, 0], [2, 0, 0, 0], [1, 2, 1, 0], [1, 4, 2, 0]]}, {"rut": "21187551-8", "tac": "Vicente Ariel Herrera Ramos", "region": "RM", "sup": "Ruben Murillo", "c": [[0, 0, 0, 0], [3, 2, 5, 1], [0, 0, 0, 0], [1, 0, 0, 0], [0, 5, 0, 1]]}, {"rut": "21238017-2", "tac": "Giovanni Andres Ancamil Riquelme", "region": "RM", "sup": "Ruben Murillo", "c": [[0, 0, 1, 0], [3, 0, 1, 2], [0, 2, 0, 0], [0, 2, 0, 0], [2, 2, 2, 1]]}, {"rut": "26886108-4", "tac": "Juan Carlos Ramos Marcano", "region": "RM", "sup": "Alfredo Cumebertbach", "c": [[1, 0, 2, 2], [2, 0, 0, 0], [0, 0, 3, 0], [2, 3, 0, 0], [1, 0, 1, 1]]}, {"rut": "27125705-8", "tac": "Jaiber Jesus Escobar Leon", "region": "RM", "sup": "Ruben Murillo", "c": [[0, 1, 0, 0], [0, 1, 1, 0], [0, 1, 2, 0], [2, 2, 1, 1], [0, 4, 1, 1]]}, {"rut": "28267011-9", "tac": "Alexis Xavier Jaramillo Ortiz", "region": "VALPO", "sup": "Terry Riverol", "c": [[0, 0, 0, 0], [1, 0, 3, 0], [1, 2, 0, 0], [0, 0, 1, 1], [4, 3, 0, 2]]}, {"rut": "16972034-7", "tac": "Samuel Alejandro Fernandez Vidal", "region": "VALPO", "sup": "Victor Moreira", "c": [[0, 0, 0, 0], [1, 0, 2, 1], [1, 2, 3, 1], [1, 0, 1, 0], [1, 1, 1, 1]]}, {"rut": "21139429-3", "tac": "Joaquin Lillo B", "region": "RM", "sup": "—", "c": [[1, 2, 0, 0], [3, 0, 2, 1], [0, 0, 0, 0], [0, 2, 1, 1], [2, 0, 1, 1]]}, {"rut": "24839716-0", "tac": "Angel Enrique More Olortegui", "region": "RM", "sup": "Alfredo Cumebertbach", "c": [[0, 2, 0, 0], [0, 1, 2, 2], [0, 2, 0, 0], [1, 0, 1, 1], [3, 2, 0, 0]]}, {"rut": "26797670-8", "tac": "Anthony Willian Morales Mendoza", "region": "VALPO", "sup": "Terry Riverol", "c": [[0, 0, 0, 0], [1, 0, 1, 0], [1, 2, 3, 1], [0, 1, 1, 0], [2, 3, 0, 1]]}, {"rut": "16300862-9", "tac": "Pablo Marcelino Hernandez Fernandez", "region": "VALPO", "sup": "Victor Moreira", "c": [[0, 0, 0, 0], [0, 0, 0, 0], [0, 1, 2, 0], [1, 0, 2, 0], [3, 3, 3, 1]]}, {"rut": "19930057-1", "tac": "Giovanni Andreas Grez Barsby", "region": "RM", "sup": "Ruben Murillo", "c": [[1, 2, 0, 1], [0, 4, 2, 0], [0, 0, 0, 0], [0, 1, 2, 0], [1, 2, 0, 0]]}, {"rut": "26055982-6", "tac": "Yender Jose Boscan Cadenas", "region": "VALPO", "sup": "Terry Riverol", "c": [[2, 0, 0, 0], [0, 0, 1, 0], [1, 2, 2, 0], [1, 3, 1, 1], [1, 1, 0, 0]]}, {"rut": "26740969-2", "tac": "Hossbel Eduardo Acosta Pacheco", "region": "RM", "sup": "Ruben Murillo", "c": [[1, 1, 1, 0], [3, 0, 2, 1], [1, 0, 1, 0], [0, 1, 1, 1], [0, 0, 2, 0]]}, {"rut": "16618182-8", "tac": "Luis Omar Sepulveda Pino", "region": "RM", "sup": "Alfredo Cumebertbach", "c": [[0, 0, 2, 0], [0, 1, 1, 0], [2, 1, 1, 0], [0, 1, 0, 1], [1, 3, 0, 1]]}, {"rut": "17458110-K", "tac": "Elias Armijo L", "region": "VALPO", "sup": "—", "c": [[0, 1, 0, 0], [0, 0, 2, 0], [1, 2, 2, 0], [0, 0, 0, 1], [4, 1, 1, 0]]}, {"rut": "18043583-2", "tac": "Felipe Osvaldo Silva Rojas", "region": "VALPO", "sup": "Victor Moreira", "c": [[0, 3, 0, 1], [1, 0, 2, 0], [2, 0, 0, 1], [1, 0, 0, 0], [2, 1, 1, 0]]}, {"rut": "18906694-5", "tac": "Francisco Javier Salazar Cabrera", "region": "RM", "sup": "Alfredo Cumebertbach", "c": [[0, 0, 1, 0], [2, 0, 1, 0], [1, 0, 2, 2], [3, 1, 0, 0], [0, 0, 1, 1]]}, {"rut": "27147563-2", "tac": "Jesus Labrador Pulido", "region": "RM", "sup": "—", "c": [[0, 0, 1, 0], [1, 1, 1, 1], [0, 1, 0, 0], [0, 1, 1, 0], [4, 2, 1, 0]]}, {"rut": "27308293-K", "tac": "Birnes Gabriel Hernandez Rodriguez", "region": "RM", "sup": "Ruben Murillo", "c": [[1, 0, 0, 0], [0, 1, 4, 0], [1, 0, 2, 0], [1, 0, 1, 0], [1, 0, 2, 1]]}, {"rut": "17606215-0", "tac": "Eugenio Elizardo Jara Neira", "region": "RM", "sup": "Alfredo Cumebertbach", "c": [[0, 0, 0, 1], [1, 1, 0, 2], [1, 0, 1, 1], [0, 2, 0, 0], [1, 0, 1, 2]]}, {"rut": "26897630-2", "tac": "Refferson Demosthene", "region": "RM", "sup": "Ruben Murillo", "c": [[2, 1, 0, 0], [0, 0, 0, 0], [0, 1, 0, 0], [0, 0, 1, 1], [3, 0, 5, 0]]}, {"rut": "27432337-K", "tac": "Leonel Benito Hernandez Ojeda", "region": "VALPO", "sup": "Terry Riverol", "c": [[1, 0, 0, 0], [0, 0, 0, 1], [1, 1, 1, 1], [1, 2, 2, 1], [2, 0, 0, 0]]}, {"rut": "19344471-7", "tac": "Matias Aaron Jaque Aguilera", "region": "VALPO", "sup": "Terry Riverol", "c": [[0, 1, 0, 1], [1, 0, 1, 0], [0, 2, 1, 0], [2, 1, 1, 0], [1, 0, 1, 0]]}, {"rut": "20034210-0", "tac": "Nicolas Andres Escalona Reyes", "region": "RM", "sup": "Alfredo Cumebertbach", "c": [[2, 1, 1, 0], [0, 1, 3, 0], [1, 1, 0, 0], [1, 0, 2, 0], [0, 0, 0, 0]]}, {"rut": "20119813-5", "tac": "Nicolas Ramirez Troncoso", "region": "RM", "sup": "—", "c": [[0, 0, 0, 1], [1, 0, 0, 1], [1, 2, 0, 0], [0, 0, 2, 0], [4, 1, 0, 0]]}, {"rut": "22121524-9", "tac": "Joxacson Alexander Aguilar Garcia", "region": "RM", "sup": "Ruben Murillo", "c": [[0, 1, 0, 0], [2, 2, 0, 0], [1, 2, 0, 0], [0, 1, 0, 0], [2, 1, 1, 0]]}, {"rut": "26776017-9", "tac": "Edgar Leandro Valero Cordova", "region": "VALPO", "sup": "Victor Moreira", "c": [[0, 0, 1, 0], [0, 1, 1, 2], [1, 1, 1, 1], [0, 0, 0, 0], [0, 1, 2, 1]]}, {"rut": "15777178-7", "tac": "Luis Alejandro Gatica Davila", "region": "VALPO", "sup": "Victor Moreira", "c": [[0, 0, 0, 0], [0, 3, 2, 0], [4, 1, 1, 0], [0, 1, 0, 0], [0, 0, 0, 0]]}, {"rut": "16637519-3", "tac": "Matias Enrique Apeleo Apeleo", "region": "VALPO", "sup": "Terry Riverol", "c": [[0, 0, 0, 0], [1, 0, 0, 0], [0, 2, 0, 0], [1, 0, 3, 0], [2, 1, 1, 1]]}, {"rut": "17121947-7", "tac": "Jonathan Andres Encina Altamirano", "region": "RM", "sup": "Alfredo Cumebertbach", "c": [[2, 0, 0, 1], [1, 1, 0, 1], [1, 1, 0, 0], [1, 0, 1, 0], [2, 0, 0, 0]]}, {"rut": "17337277-9", "tac": "Cristopher Daniel Contreras Muñoz", "region": "RM", "sup": "Ruben Murillo", "c": [[0, 1, 0, 0], [0, 0, 0, 1], [1, 0, 0, 1], [2, 0, 0, 0], [5, 1, 0, 0]]}, {"rut": "18766670-8", "tac": "Matias Cornejo D", "region": "VALPO", "sup": "—", "c": [[0, 0, 0, 0], [1, 0, 0, 0], [0, 0, 0, 0], [2, 0, 0, 0], [2, 3, 3, 1]]}, {"rut": "18841406-0", "tac": "Esteban Ignacio Pizarro Quintana", "region": "VALPO", "sup": "Terry Riverol", "c": [[0, 0, 0, 0], [0, 0, 0, 0], [3, 0, 0, 0], [2, 0, 3, 0], [1, 0, 2, 1]]}, {"rut": "19031572-K", "tac": "Jhonny Mauricio Wood Soto", "region": "RM", "sup": "Ruben Murillo", "c": [[0, 3, 0, 0], [2, 1, 0, 0], [0, 1, 1, 0], [2, 0, 0, 1], [0, 0, 1, 0]]}, {"rut": "20574456-8", "tac": "Julio Rojas A", "region": "RM", "sup": "—", "c": [[0, 2, 0, 0], [1, 0, 1, 0], [0, 0, 0, 2], [0, 1, 1, 1], [1, 0, 1, 1]]}, {"rut": "26284326-2", "tac": "Rafael Antonio Vargas Brizuela", "region": "VALPO", "sup": "Terry Riverol", "c": [[0, 1, 0, 0], [1, 1, 0, 0], [0, 4, 0, 0], [1, 1, 0, 0], [1, 1, 1, 0]]}, {"rut": "26656441-4", "tac": "Jose Alberto Rojo Arias", "region": "VALPO", "sup": "Terry Riverol", "c": [[0, 1, 1, 0], [0, 1, 0, 0], [4, 1, 1, 0], [1, 1, 0, 0], [0, 1, 0, 0]]}, {"rut": "27399299-5", "tac": "Jose Samael Perez Rangel", "region": "VALPO", "sup": "Terry Riverol", "c": [[0, 2, 0, 0], [0, 1, 0, 0], [0, 3, 2, 0], [2, 0, 0, 0], [0, 0, 2, 0]]}, {"rut": "21070849-9", "tac": "Nicolas Francisco Fuentes Navarrete", "region": "RM", "sup": "Ruben Murillo", "c": [[0, 2, 0, 0], [1, 0, 0, 0], [1, 1, 0, 0], [0, 0, 0, 1], [2, 1, 2, 0]]}, {"rut": "26292588-9", "tac": "Deivi Gustavo Bello Bogado", "region": "RM", "sup": "Alfredo Cumebertbach", "c": [[0, 0, 0, 0], [0, 0, 0, 0], [0, 2, 0, 1], [0, 0, 0, 0], [3, 3, 1, 1]]}, {"rut": "27827572-8", "tac": "Jose Alvaro Salas Medina", "region": "VALPO", "sup": "Terry Riverol", "c": [[0, 1, 0, 0], [1, 2, 2, 0], [0, 1, 2, 0], [2, 0, 0, 0], [0, 0, 0, 0]]}, {"rut": "27983584-0", "tac": "Marco Jesus Perez Garcia", "region": "VALPO", "sup": "Terry Riverol", "c": [[0, 0, 0, 1], [0, 0, 2, 0], [1, 0, 2, 1], [0, 0, 0, 0], [2, 2, 0, 0]]}, {"rut": "17808957-9", "tac": "Erick Cristian Sepulveda Castro", "region": "VALPO", "sup": "Victor Moreira", "c": [[0, 0, 1, 0], [0, 1, 1, 0], [0, 2, 0, 0], [0, 0, 0, 1], [1, 2, 1, 0]]}, {"rut": "20426235-7", "tac": "Tomas Plaza Romero", "region": "RM", "sup": "—", "c": [[0, 1, 1, 0], [2, 2, 3, 0], [0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0]]}, {"rut": "26496150-5", "tac": "Luis Gustavo Martinez Nuñez", "region": "VALPO", "sup": "Victor Moreira", "c": [[0, 1, 0, 0], [0, 0, 2, 1], [1, 2, 0, 0], [0, 0, 0, 1], [1, 0, 0, 0]]}, {"rut": "25848248-4", "tac": "Jose Gabriel Arevalo Gamez", "region": "RM", "sup": "Ruben Murillo", "c": [[0, 1, 1, 0], [0, 0, 1, 1], [0, 0, 1, 0], [0, 0, 0, 0], [1, 1, 1, 0]]}, {"rut": "19619558-0", "tac": "Cristobal Silva Leiva", "region": "VALPO", "sup": "Terry Riverol", "c": [[0, 1, 0, 0], [1, 0, 2, 0], [0, 0, 1, 0], [2, 0, 0, 0], [0, 0, 0, 0]]}, {"rut": "15883974-1", "tac": "Alexis Patricio Santana Miranda", "region": "VALPO", "sup": "Victor Moreira", "c": [[2, 0, 0, 0], [3, 0, 1, 0], [0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0]]}, {"rut": "27866763-4", "tac": "Ivan Jose Guerra", "region": "RM", "sup": "Ruben Murillo", "c": [[0, 0, 1, 0], [1, 0, 2, 1], [0, 0, 1, 0], [0, 0, 0, 0], [0, 0, 0, 0]]}, {"rut": "19483547-7", "tac": "Bastian Andre Burdiles Morales", "region": "RM", "sup": "Alfredo Cumebertbach", "c": [[1, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0], [1, 0, 1, 0], [2, 0, 0, 0]]}, {"rut": "15099143-9", "tac": "Javier Gazmuri B", "region": "VALPO", "sup": "—", "c": [[0, 1, 0, 0], [2, 0, 0, 1], [0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0]]}, {"rut": "18916493-9", "tac": "Maikol Briceño M", "region": "VALPO", "sup": "—", "c": [[0, 1, 1, 1], [0, 1, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0]]}, {"rut": "20995396-K", "tac": "Sin dato", "region": "RM", "sup": "—", "c": [[0, 0, 0, 0], [0, 0, 1, 0], [0, 0, 0, 0], [0, 0, 0, 0], [1, 0, 0, 1]]}, {"rut": "25707893-0", "tac": "Richard Daniel Romero Ravenstein", "region": "RM", "sup": "Ruben Murillo", "c": [[0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 2], [0, 0, 1, 0]]}, {"rut": "20055264-4", "tac": "Bastian Nicolas Diaz Ruz", "region": "RM", "sup": "Ruben Murillo", "c": [[0, 0, 0, 0], [0, 1, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0], [0, 1, 0, 0]]}, {"rut": "18575357-3", "tac": "Mario Peña S", "region": "RM", "sup": "—", "c": [[1, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0]]}, {"rut": "26437023-K", "tac": "Daniel Oria P", "region": "RM", "sup": "—", "c": [[0, 0, 1, 0], [0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0]]}]};
+const UMBRAL = DB.umbral;
+let MESES = DB.meses.slice();
+
+// ---- color scale (verde -> ambar en umbral -> rojo) ----
+function lerp(a,b,t){return a+(b-a)*t}
+function hex(c){return '#'+c.map(v=>Math.round(v).toString(16).padStart(2,'0')).join('')}
+function colorFor(v){
+  // 0 -> good, UMBRAL -> mid, 2*UMBRAL+ -> bad
+  const good=[45,212,167], mid=[245,183,67], bad=[255,93,108];
+  if(v<=UMBRAL){const t=Math.max(0,v/UMBRAL);return hex([lerp(good[0],mid[0],t),lerp(good[1],mid[1],t),lerp(good[2],mid[2],t)]);}
+  const t=Math.min(1,(v-UMBRAL)/UMBRAL);
+  return hex([lerp(mid[0],bad[0],t),lerp(mid[1],bad[1],t),lerp(mid[2],bad[2],t)]);
+}
+function cellText(v){return v.toFixed(1).replace('.',',')+'%'}
+
+// ---- state ----
+let state={region:'Todos', sups:new Set(['Todos']), mes:2, sortKey:2, sortDir:-1};
+
+// ---- filters UI ----
+function buildFilters(){
+  const regs=['Todos','VALPO','RM'];
+  document.getElementById('f-region').innerHTML = regs.map(r=>
+    `<span class="chip ${r===state.region?'on':''}" data-r="${r}">${r}</span>`).join('');
+  const sups=['Todos',...[...new Set(DB.data.map(d=>d.sup))].sort()];
+  document.getElementById('f-sup').innerHTML = sups.map(s=>
+    `<span class="chip ${state.sups.has(s)?'on':''}" data-s="${s}">${s}</span>`).join('');
+  document.getElementById('f-mes').innerHTML = MESES.map((m,i)=>
+    `<span class="chip mon ${i===state.mes?'on':''}" data-m="${i}">${m}</span>`).join('');
+
+  document.querySelectorAll('#f-region .chip').forEach(c=>c.onclick=()=>{state.region=c.dataset.r;render();});
+  document.querySelectorAll('#f-sup .chip').forEach(c=>c.onclick=()=>{
+    const s=c.dataset.s;
+    if(s==='Todos'){state.sups=new Set(['Todos']);}
+    else{state.sups.delete('Todos'); state.sups.has(s)?state.sups.delete(s):state.sups.add(s); if(state.sups.size===0)state.sups=new Set(['Todos']);}
+    render();
+  });
+  document.querySelectorAll('#f-mes .chip').forEach(c=>c.onclick=()=>{state.mes=+c.dataset.m; state.sortKey=+c.dataset.m; state.sortDir=-1; render();});
+}
+
+function filtered(){
+  return DB.data.filter(d=>
+    (state.region==='Todos'||d.region===state.region) &&
+    (state.sups.has('Todos')||state.sups.has(d.sup))
+  );
+}
+
+// ---- KPIs ----
+function renderKPIs(rows){
+  const mi=state.mes;
+  const vals=rows.map(r=>r.m[mi]);
+  const avg = vals.length? vals.reduce((a,b)=>a+b,0)/vals.length : 0;
+  const over = rows.filter(r=>r.m[mi]>UMBRAL).length;
+  const pctOver = rows.length? (over/rows.length*100):0;
+  const worst = rows.slice().sort((a,b)=>b.m[mi]-a.m[mi])[0];
+  const el=document.getElementById('kpis');
+  el.innerHTML=`
+   <div class="kpi"><div class="kpi-label">Técnicos en vista</div>
+     <div class="kpi-val mono">${rows.length}</div>
+     <div class="kpi-sub">${state.region==='Todos'?'todas las regiones':state.region}</div></div>
+   <div class="kpi ${pctOver>40?'warn':''}"><div class="kpi-label">Sobre umbral · ${MESES[mi]}</div>
+     <div class="kpi-val mono">${over}</div>
+     <div class="kpi-sub"><b>${pctOver.toFixed(0)}%</b> del grupo &gt; 5,5%</div></div>
+   <div class="kpi ${avg>UMBRAL?'warn':'ok'}"><div class="kpi-label">Promedio · ${MESES[mi]}</div>
+     <div class="kpi-val mono">${avg.toFixed(1).replace('.',',')}%</div>
+     <div class="kpi-sub">meta 5,5% · ${avg>UMBRAL?'<b style="color:var(--bad)">excede</b>':'<b style="color:var(--good)">cumple</b>'}</div></div>
+   <div class="kpi warn"><div class="kpi-label">Peor técnico · ${MESES[mi]}</div>
+     <div class="kpi-val mono">${worst?worst.m[mi].toFixed(1).replace('.',','):'-'}%</div>
+     <div class="kpi-sub">${worst?worst.tac.split(' ').slice(0,2).join(' '):'-'}</div></div>`;
+}
+
+// ---- charts ----
+let rankChart, trendChart;
+if(HAS_CHART){Chart.defaults.color='#8b9bc4';Chart.defaults.font.family="Inter,sans-serif";}
+
+function chartFallback(id){
+  const c=document.getElementById(id); if(!c)return;
+  const box=c.closest('.chartbox'); if(box)box.innerHTML='<div class="empty">El gráfico requiere conexión a internet (Chart.js).<br>El mapa de calor y los KPIs funcionan sin conexión.</div>';
+}
+
+function renderRank(rows){
+  if(!HAS_CHART){chartFallback('rankChart');return;}
+  const mi=state.mes;
+  const top=rows.slice().sort((a,b)=>b.m[mi]-a.m[mi]).slice(0,15);
+  document.getElementById('rank-sub').textContent=`Top ${top.length} · ${MESES[mi]} · ordenado de mayor a menor`;
+  const labels=top.map(r=>r.tac.split(' ').slice(0,2).join(' '));
+  const vals=top.map(r=>r.m[mi]);
+  const cols=vals.map(v=>colorFor(v));
+  if(rankChart)rankChart.destroy();
+  rankChart=new Chart(document.getElementById('rankChart'),{
+    type:'bar',
+    data:{labels,datasets:[{data:vals,backgroundColor:cols,borderRadius:5,barThickness:14}]},
+    options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{display:false},
+        tooltip:{callbacks:{label:c=>` ${c.raw.toFixed(2).replace('.',',')}%`,
+          afterLabel:c=>{const r=top[c.dataIndex];return `${r.sup} · ${r.region}`;}}},
+        annotation:false},
+      scales:{
+        x:{grid:{color:'rgba(36,49,82,.4)'},ticks:{callback:v=>v+'%'},
+           title:{display:false}, suggestedMax:Math.max(8,Math.max(...vals)*1.1)},
+        y:{grid:{display:false},ticks:{font:{size:11}}}
+      }}
+  });
+  drawUmbralLine('rankChart');
+}
+
+// umbral vertical line for horizontal bar chart
+const umbralPlugin={
+  id:'umbralX',
+  afterDraw(chart){
+    if(chart.canvas.id!=='rankChart')return;
+    const {ctx,chartArea,scales}=chart; const x=scales.x.getPixelForValue(UMBRAL);
+    ctx.save();ctx.strokeStyle='#f5b743';ctx.lineWidth=1.5;ctx.setLineDash([5,4]);
+    ctx.beginPath();ctx.moveTo(x,chartArea.top);ctx.lineTo(x,chartArea.bottom);ctx.stroke();
+    ctx.setLineDash([]);ctx.fillStyle='#f5b743';ctx.font='10px Inter';ctx.textAlign='center';
+    ctx.fillText('5,5%',x,chartArea.top-3);ctx.restore();
+  }
+};
+if(HAS_CHART)Chart.register(umbralPlugin);
+function drawUmbralLine(){}
+
+function renderTrend(rows){
+  if(!HAS_CHART){chartFallback('trendChart');return;}
+  const avgs=MESES.map((_,i)=>{const v=rows.map(r=>r.m[i]);return v.length?v.reduce((a,b)=>a+b,0)/v.length:0;});
+  const overCounts=MESES.map((_,i)=>rows.filter(r=>r.m[i]>UMBRAL).length);
+  if(trendChart)trendChart.destroy();
+  trendChart=new Chart(document.getElementById('trendChart'),{
+    type:'line',
+    data:{labels:MESES.map(m=>m.replace(' (en curso)','*')),
+      datasets:[
+        {label:'Promedio %',data:avgs,borderColor:'#4cc9f0',backgroundColor:'rgba(76,201,240,.12)',
+         fill:true,tension:.3,pointRadius:5,pointBackgroundColor:'#4cc9f0',borderWidth:2.5,yAxisID:'y'},
+        {label:'Sobre umbral (téc.)',data:overCounts,borderColor:'#ff5d6c',borderDash:[5,4],
+         tension:.3,pointRadius:4,pointBackgroundColor:'#ff5d6c',borderWidth:2,yAxisID:'y2'}
+      ]},
+    options:{responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{position:'top',labels:{boxWidth:12,padding:14,font:{size:11}}},
+        tooltip:{callbacks:{label:c=>c.datasetIndex===0?` Promedio: ${c.raw.toFixed(2).replace('.',',')}%`:` ${c.raw} técnicos > 5,5%`}}},
+      scales:{
+        y:{position:'left',grid:{color:'rgba(36,49,82,.4)'},ticks:{callback:v=>v+'%'},
+           title:{display:true,text:'promedio %',color:'#4cc9f0',font:{size:10}}},
+        y2:{position:'right',grid:{display:false},ticks:{precision:0},
+            title:{display:true,text:'téc. > umbral',color:'#ff5d6c',font:{size:10}}},
+        x:{grid:{display:false}}
+      }}
+  });
+}
+// umbral line on trend
+const umbralYPlugin={id:'umbralY',afterDraw(chart){
+  if(chart.canvas.id!=='trendChart')return;
+  const{ctx,chartArea,scales}=chart;const y=scales.y.getPixelForValue(UMBRAL);
+  if(y<chartArea.top||y>chartArea.bottom)return;
+  ctx.save();ctx.strokeStyle='rgba(245,183,67,.8)';ctx.lineWidth=1.2;ctx.setLineDash([4,4]);
+  ctx.beginPath();ctx.moveTo(chartArea.left,y);ctx.lineTo(chartArea.right,y);ctx.stroke();
+  ctx.setLineDash([]);ctx.fillStyle='#f5b743';ctx.font='10px Inter';ctx.textAlign='left';
+  ctx.fillText('meta 5,5%',chartArea.left+4,y-4);ctx.restore();
+}};
+if(HAS_CHART)Chart.register(umbralYPlugin);
+
+// ---- heatmap ----
+function renderHeat(rows){
+  // header
+  const hr=document.getElementById('hm-head-row');
+  let th=`<th class="l" data-k="tac">Técnico ${arrow('tac')}</th>`;
+  MESES.forEach((m,i)=>{th+=`<th data-k="${i}">${m.replace(' (en curso)','*')} ${arrow(i)}</th>`;});
+  th+=`<th data-k="avg">Prom. ${arrow('avg')}</th><th data-k="trend">Tend.</th>`;
+  hr.innerHTML=th;
+  hr.querySelectorAll('th').forEach(t=>t.onclick=()=>{
+    const k=t.dataset.k; const kk=(k==='tac'||k==='avg'||k==='trend')?k:+k;
+    if(state.sortKey===kk)state.sortDir*=-1; else{state.sortKey=kk;state.sortDir=(kk==='tac')?1:-1;}
+    render();
+  });
+
+  // tendencia sobre meses COMPLETOS (Mes1->Mes3); el Mes4 (en curso) queda solo en el sparkline
+  const withAvg=rows.map(r=>({...r,avg:r.m.reduce((a,b)=>a+b,0)/r.m.length, delta:r.m[2]-r.m[0]}));
+  const k=state.sortKey;
+  withAvg.sort((a,b)=>{
+    let av,bv;
+    if(k==='tac'){return a.tac.localeCompare(b.tac)*state.sortDir;}
+    else if(k==='avg'){av=a.avg;bv=b.avg;}
+    else if(k==='trend'){av=a.delta;bv=b.delta;}
+    else{av=a.m[k];bv=b.m[k];}
+    return (av-bv)*state.sortDir;
+  });
+
+  const body=document.getElementById('hm-body');
+  if(!withAvg.length){body.innerHTML=`<tr><td colspan="${MESES.length+3}"><div class="empty">Sin técnicos para este filtro.</div></td></tr>`;return;}
+  const maxV=Math.max(...withAvg.flatMap(r=>r.m),11);
+  body.innerHTML=withAvg.map(r=>{
+    const cells=r.m.map(v=>`<td><div class="cell" style="background:${colorFor(v)};color:${v>UMBRAL*1.05?'#2a0c10':'#06231b'}">${cellText(v)}</div></td>`).join('');
+    const avgCell=`<td><div class="cell" style="background:${colorFor(r.avg)}26;color:${colorFor(r.avg)};border:1px solid ${colorFor(r.avg)}55">${cellText(r.avg)}</div></td>`;
+    const spark=`<div class="spark">${r.m.map(v=>`<i style="height:${4+Math.min(1,v/maxV)*22}px;background:${colorFor(v)}"></i>`).join('')}</div>`;
+    const d=r.delta; const cls=Math.abs(d)<0.4?'flat':(d>0?'up':'down'); const ar=cls==='flat'?'—':(d>0?'▲':'▼');
+    return `<tr>
+      <td class="tac-cell"><span class="reg ${r.region}">${r.region}</span>
+        <span class="tac-name">${r.tac}</span><div class="tac-meta">${r.sup} · ${r.rut}</div></td>
+      ${cells}${avgCell}
+      <td><div class="trend ${cls}" title="Δ ${MESES[0]}→${MESES[2]} (meses completos): ${d>0?'+':''}${d.toFixed(1).replace('.',',')} pts">${ar} ${spark}</div></td>
+    </tr>`;
+  }).join('');
+}
+function arrow(k){const kk=(k==='tac'||k==='avg'||k==='trend')?k:+k;
+  if(state.sortKey!==kk)return '<span class="ar">↕</span>';
+  return `<span class="ar">${state.sortDir>0?'↑':'↓'}</span>`;}
+
+
+// ---- responsabilidad (DB2) ----
+const CAT_COLORS = {'Técnico':'#ff5d6c','Plataforma VTR':'#4cc9f0','Cliente':'#2dd4a7','Desconexión Tercero':'#a78bfa'};
+let respState = {sortKey:'tot', sortDir:-1};
+let respStack, respDonut;
+
+function filtered2(){
+  return DB2.data.filter(d=>
+    (state.region==='Todos'||d.region===state.region) &&
+    (state.sups.has('Todos')||state.sups.has(d.sup))
+  );
+}
+function mesFocoLabel(){return MESES[state.mes].replace(' (en curso)','');}
+
+function renderRespLegend(){
+  document.getElementById('resp-legend').innerHTML = DB2.cats.map(c=>
+    `<span class="it"><span class="sw" style="background:${CAT_COLORS[c]}"></span>${c}</span>`).join('');
+}
+
+function renderRespCharts(rows){
+  if(!HAS_CHART){chartFallback('respStack');chartFallback('respDonut');return;}
+  // barras apiladas: todos los meses del formulario
+  const dsets = DB2.cats.map((cat,ci)=>({
+    label:cat,
+    data:DB2.meses.map((_,mi)=>rows.reduce((a,r)=>a+r.c[mi][ci],0)),
+    backgroundColor:CAT_COLORS[cat], borderRadius:4, barThickness:26, stack:'s'
+  }));
+  if(respStack)respStack.destroy();
+  respStack = new Chart(document.getElementById('respStack'),{
+    type:'bar',
+    data:{labels:DB2.meses, datasets:dsets},
+    options:{responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{display:false},
+        tooltip:{callbacks:{footer:items=>'Total: '+items.reduce((a,i)=>a+i.raw,0)+' casos'}}},
+      scales:{x:{stacked:true,grid:{display:false}},
+        y:{stacked:true,grid:{color:'rgba(36,49,82,.4)'},title:{display:true,text:'casos',font:{size:10}}}}}
+  });
+  // dona: mes foco
+  const mi2 = state.mes+1; // DB2 parte en Febrero
+  const vals = DB2.cats.map((_,ci)=>rows.reduce((a,r)=>a+r.c[mi2][ci],0));
+  const tot = vals.reduce((a,b)=>a+b,0);
+  document.getElementById('resp-donut-sub').textContent = `Distribución · ${mesFocoLabel()} · ${tot} casos`;
+  if(respDonut)respDonut.destroy();
+  respDonut = new Chart(document.getElementById('respDonut'),{
+    type:'doughnut',
+    data:{labels:DB2.cats, datasets:[{data:vals, backgroundColor:DB2.cats.map(c=>CAT_COLORS[c]),
+      borderColor:'#16203a', borderWidth:2}]},
+    options:{responsive:true,maintainAspectRatio:false,cutout:'62%',
+      plugins:{legend:{position:'right',labels:{boxWidth:12,padding:12,font:{size:11}}},
+        tooltip:{callbacks:{label:c=>` ${c.label}: ${c.raw} (${tot?(c.raw/tot*100).toFixed(1).replace('.',','):0}%)`}}}}
+  });
+}
+
+function respArrow(k){
+  if(respState.sortKey!==k)return '<span class="ar">↕</span>';
+  return `<span class="ar">${respState.sortDir>0?'↑':'↓'}</span>`;
+}
+
+function renderRespTable(rows){
+  const mi2 = state.mes+1;
+  const withTot = rows.map(r=>({...r, v:r.c[mi2], tot:r.c[mi2].reduce((a,b)=>a+b,0)}))
+    .filter(r=>r.tot>0);
+  document.getElementById('resp-table-sub').textContent =
+    `${withTot.length} técnicos con casos en ${mesFocoLabel()} · click en un encabezado para ordenar · la columna Técnico es cargo directo al TAC`;
+
+  const head = document.getElementById('respt-head');
+  let th = `<th class="l" data-k="tac">Técnico ${respArrow('tac')}</th>`;
+  DB2.cats.forEach((c,i)=>{th+=`<th data-k="${i}" style="color:${CAT_COLORS[c]}">${c.replace('Desconexión Tercero','Desc. 3ro').replace('Plataforma VTR','Plataforma')} ${respArrow(i)}</th>`;});
+  th += `<th data-k="tot">Total ${respArrow('tot')}</th>`;
+  head.innerHTML = th;
+  head.querySelectorAll('th').forEach(t=>t.onclick=()=>{
+    const k=t.dataset.k; const kk=(k==='tac'||k==='tot')?k:+k;
+    if(respState.sortKey===kk)respState.sortDir*=-1;
+    else{respState.sortKey=kk;respState.sortDir=(kk==='tac')?1:-1;}
+    renderRespTable(rows);
+  });
+
+  const k=respState.sortKey;
+  withTot.sort((a,b)=>{
+    if(k==='tac')return a.tac.localeCompare(b.tac)*respState.sortDir;
+    const av=(k==='tot')?a.tot:a.v[k], bv=(k==='tot')?b.tot:b.v[k];
+    return (av-bv)*respState.sortDir || b.tot-a.tot;
+  });
+
+  const body=document.getElementById('respt-body');
+  if(!withTot.length){body.innerHTML=`<tr><td colspan="${DB2.cats.length+2}"><div class="empty">Sin casos para este filtro.</div></td></tr>`;return;}
+  body.innerHTML = withTot.map(r=>{
+    const cells = r.v.map((v,ci)=>{
+      const col=CAT_COLORS[DB2.cats[ci]];
+      const style = v>0 ? `background:${col}22;color:${col};border:1px solid ${col}44` : 'color:var(--muted);opacity:.35';
+      return `<td><div class="cell mono" style="${style}">${v}</div></td>`;
+    }).join('');
+    return `<tr>
+      <td class="tac-cell"><span class="reg ${r.region}">${r.region}</span>
+        <span class="tac-name">${r.tac}</span><div class="tac-meta">${r.sup} · ${r.rut}</div></td>
+      ${cells}
+      <td><div class="cell mono" style="background:var(--panel2);border:1px solid var(--line);font-weight:700">${r.tot}</div></td>
+    </tr>`;
+  }).join('');
+}
+
+function render(){
+  buildFilters();
+  const rows=filtered();
+  renderKPIs(rows);
+  renderRank(rows);
+  renderTrend(rows);
+  renderHeat(rows);
+  const rows2=filtered2();
+  renderRespLegend();
+  renderRespCharts(rows2);
+  renderRespTable(rows2);
+}
+render();
+</script>
+</body>
+</html>
