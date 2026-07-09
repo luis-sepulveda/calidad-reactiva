@@ -283,7 +283,7 @@ function renderRank(rows){
   const mi=state.mes;
   const top=rows.slice().sort((a,b)=>b.m[mi]-a.m[mi]).slice(0,15);
   document.getElementById('rank-sub').textContent=`Top ${top.length} · ${MESES[mi]} · ordenado de mayor a menor`;
-  const labels=top.map(r=>r.tac.split(' ').slice(0,2).join(' '));
+  const labels=top.map(r=>{const p=r.tac.trim().split(/\s+/).filter(w=>w!=='.');return p.length>2?p[0]+' '+p[p.length-2]:p.join(' ');});
   const vals=top.map(r=>r.m[mi]);
   const cols=vals.map(v=>colorFor(v));
   if(rankChart)rankChart.destroy();
